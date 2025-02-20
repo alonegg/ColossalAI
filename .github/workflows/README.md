@@ -14,7 +14,7 @@
       - [Compatibility Test on Dispatch](#compatibility-test-on-dispatch)
     - [Release](#release)
     - [User Friendliness](#user-friendliness)
-    - [Commmunity](#commmunity)
+    - [Community](#community)
   - [Configuration](#configuration)
   - [Progress Log](#progress-log)
 
@@ -30,23 +30,30 @@ In the section below, we will dive into the details of different workflows avail
 Refer to this [documentation](https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow) on how to manually trigger a workflow.
 I will provide the details of each workflow below.
 
-**A PR which changes the `version.txt` is considered as a release PR in the following coontext.**
+**A PR which changes the `version.txt` is considered as a release PR in the following context.**
 
 
 ### Code Style Check
 
-| Workflow Name               | File name                      | Description                                                                                                |
-| --------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `Pre-commit`                | `pre_commit.yml`               | This workflow runs pre-commit checks for code style consistency for PRs.                                   |
-| `Report pre-commit failure` | `report_precommit_failure.yml` | This PR will put up a comment in the PR to explain the precommit failure and remedy if `Pre-commit` fails. |
+| Workflow Name | File name         | Description                                                                                                    |
+| ------------- | ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| `post-commit` | `post_commit.yml` | This workflow runs pre-commit checks for changed files to achieve code style consistency after a PR is merged. |
 
 ### Unit Test
 
 | Workflow Name          | File name                  | Description                                                                                                                                       |
 | ---------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Build on PR`          | `build_on_pr.yml`          | This workflow is triggered when the label `Run build and Test` is assigned to a PR. It will run all the unit tests in the repository with 4 GPUs. |
+| `Build on PR`          | `build_on_pr.yml`          | This workflow is triggered when a PR changes essential files and a branch is created/deleted. It will run all the unit tests in the repository with 4 GPUs. |
 | `Build on Schedule`    | `build_on_schedule.yml`    | This workflow will run the unit tests everyday with 8 GPUs. The result is sent to Lark.                                                           |
 | `Report test coverage` | `report_test_coverage.yml` | This PR will put up a comment to report the test coverage results when `Build` is done.                                                           |
+
+To reduce the average time of the unit test on PR, `Build on PR` workflow manages testmon cache.
+
+1. When creating a new branch, it copies `cache/main/.testmondata*` to `cache/<branch>/`.
+2. When creating a new PR or change the base branch of a PR, it copies `cache/<base_ref>/.testmondata*` to `cache/_pull/<pr_number>/`.
+3. When running unit tests for each PR, it restores testmon cache from `cache/_pull/<pr_number>/`. After the test, it stores the cache back to `cache/_pull/<pr_number>/`.
+4. When a PR is closed, if it's merged, it copies `cache/_pull/<pr_number>/.testmondata*` to `cache/<base_ref>/`. Otherwise, it just removes `cache/_pull/<pr_number>`.
+5. When a branch is deleted, it removes `cache/<ref>`.
 
 ### Example Test
 
@@ -59,15 +66,15 @@ I will provide the details of each workflow below.
 #### Example Test on Dispatch
 
 This workflow is triggered by manually dispatching the workflow. It has the following input parameters:
-- `example_directory`: the example directory to test. Multiple directories are supported and must be separated b$$y comma. For example, language/gpt, images/vit. Simply input language or simply gpt does not work.
+- `example_directory`: the example directory to test. Multiple directories are supported and must be separated by comma. For example, language/gpt, images/vit. Simply input language or simply gpt does not work.
 
 ### Compatibility Test
 
 | Workflow Name                    | File name                            | Description                                                                                                          |
 | -------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `Compatibility Test on PR`       | `compatibility_test_on_pr.yml`       | Check Colossal-AI's compatiblity when `version.txt` is changed in a PR.                                              |
-| `Compatibility Test on Schedule` | `compatibility_test_on_schedule.yml` | This workflow will check the compatiblity of Colossal-AI against PyTorch specified in `.compatibility` every Sunday. |
-| `Compatiblity Test on Dispatch`  | `compatibility_test_on_dispatch.yml` | Test PyTorch Compatibility manually.                                                                                 |
+| `Compatibility Test on PR`       | `compatibility_test_on_pr.yml`       | Check Colossal-AI's compatibility when `version.txt` is changed in a PR.                                              |
+| `Compatibility Test on Schedule` | `compatibility_test_on_schedule.yml` | This workflow will check the compatibility of Colossal-AI against PyTorch specified in `.compatibility` every Sunday. |
+| `Compatibility Test on Dispatch`  | `compatibility_test_on_dispatch.yml` | Test PyTorch Compatibility manually.                                                                                 |
 
 
 #### Compatibility Test on Dispatch
@@ -75,7 +82,7 @@ This workflow is triggered by manually dispatching the workflow. It has the foll
 - `torch version`:torch version to test against, multiple versions are supported but must be separated by comma. The default is value is all, which will test all available torch versions listed in this [repository](https://github.com/hpcaitech/public_assets/tree/main/colossalai/torch_build/torch_wheels).
 - `cuda version`: cuda versions to test against, multiple versions are supported but must be separated by comma. The CUDA versions must be present in our [DockerHub repository](https://hub.docker.com/r/hpcaitech/cuda-conda).
 
-> It only test the compatiblity of the main branch
+> It only test the compatibility of the main branch
 
 
 ### Release
@@ -98,7 +105,7 @@ This workflow is triggered by manually dispatching the workflow. It has the foll
 | `Synchronize submodule` | `submodule.yml`         | This workflow will check if any git submodule is updated. If so, it will create a PR to update the submodule pointers.                 |
 | `Close inactive issues` | `close_inactive.yml`    | This workflow will close issues which are stale for 14 days.                                                                           |
 
-### Commmunity
+### Community
 
 | Workflow Name                                | File name                        | Description                                                                      |
 | -------------------------------------------- | -------------------------------- | -------------------------------------------------------------------------------- |
@@ -114,7 +121,7 @@ This `.compatibility` file is to tell GitHub Actions which PyTorch and CUDA vers
 
 2. `.cuda_ext.json`
 
-This file controls which CUDA versions will be checked against CUDA extenson built. You can add a new entry according to the json schema below to check the AOT build of PyTorch extensions before release.
+This file controls which CUDA versions will be checked against CUDA extension built. You can add a new entry according to the json schema below to check the AOT build of PyTorch extensions before release.
 
 ```json
 {
@@ -130,8 +137,7 @@ This file controls which CUDA versions will be checked against CUDA extenson bui
 ## Progress Log
 
 - [x] Code style check
-  - [x] pre-commit check
-  - [x] pre-commit failure report
+  - [x] post-commit check
 - [x] unit testing
   - [x] test on PR
   - [x] report test coverage
@@ -146,7 +152,7 @@ This file controls which CUDA versions will be checked against CUDA extenson bui
   - [x] check on PR
   - [x] regular check
   - [x] manual dispatch
-- [x] compatiblity check
+- [x] compatibility check
   - [x] check on PR
   - [x] manual dispatch
   - [x] auto test when release

@@ -2,9 +2,9 @@ from typing import List, Tuple
 
 import torch
 
+from colossalai._analyzer._subclasses.flop_tensor import flop_mapping
+from colossalai._analyzer.fx.node_util import compute_size_in_bytes
 from colossalai.auto_parallel.tensor_shard.sharding_strategy import MemoryCost, OperationDataType, TrainCycleItem
-from colossalai.fx.profiler.memory_utils import activation_size
-from colossalai.fx.profiler.opcount import flop_mapping
 
 from ..registry import meta_register
 
@@ -14,7 +14,6 @@ __all__ = ["avgpool_meta_info", "maxpool_meta_info"]
 @meta_register.register(torch.nn.AdaptiveAvgPool1d)
 @meta_register.register(torch.nn.AdaptiveAvgPool2d)
 @meta_register.register(torch.nn.AdaptiveAvgPool3d)
-@meta_register.register(torch.flatten)
 def avgpool_meta_info(*args, **kwargs) -> Tuple[TrainCycleItem, TrainCycleItem, List[torch.Tensor]]:
     """Meta info for AdaptiveAvgPool
     The aten graph of AdaptiveAvgPool is
@@ -53,8 +52,8 @@ def avgpool_meta_info(*args, **kwargs) -> Tuple[TrainCycleItem, TrainCycleItem, 
     compute_cost = TrainCycleItem(fwd=fwd_compute_cost, bwd=bwd_compute_cost, total=fwd_compute_cost + bwd_compute_cost)
 
     # calculate memory cost
-    fwd_mem_cost = MemoryCost() if is_inplace else MemoryCost(activation=activation_size(output_tensor))
-    bwd_mem_cost = MemoryCost() if is_inplace else MemoryCost(activation=activation_size(input_tensor))
+    fwd_mem_cost = MemoryCost() if is_inplace else MemoryCost(activation=compute_size_in_bytes(output_tensor))
+    bwd_mem_cost = MemoryCost() if is_inplace else MemoryCost(activation=compute_size_in_bytes(input_tensor))
 
     # total cost
     total_mem_cost = MemoryCost(activation=fwd_mem_cost.activation + bwd_mem_cost.activation)
@@ -64,7 +63,7 @@ def avgpool_meta_info(*args, **kwargs) -> Tuple[TrainCycleItem, TrainCycleItem, 
     # store fwd_in, fwd_buffer, fwd_out
     fwd_in = []
     fwd_buffer = []
-    fwd_out = [torch.zeros_like(output_tensor, device='meta')]
+    fwd_out = [torch.zeros_like(output_tensor, device="meta")]
 
     return compute_cost, mem_cost, fwd_in, fwd_buffer, fwd_out
 
@@ -115,11 +114,13 @@ def maxpool_meta_info(*args, **kwargs) -> Tuple[TrainCycleItem, TrainCycleItem, 
     # calculate memory cost
     # NOTE: the index matrix will be discarded in backward phase
     # NOTE: currently in SPMD solver we always believe that there will be a new tensor created in forward
-    fwd_mem_cost = MemoryCost(activation=activation_size([input_tensor, output_tensor, index_matrix]))
+    fwd_mem_cost = MemoryCost(activation=compute_size_in_bytes([input_tensor, output_tensor, index_matrix]))
 
     # temp memory for backward is the index matrix to be discarded
-    bwd_mem_cost = MemoryCost(activation=activation_size(input_tensor) - activation_size(index_matrix),
-                              temp=activation_size(index_matrix))
+    bwd_mem_cost = MemoryCost(
+        activation=compute_size_in_bytes(input_tensor) - compute_size_in_bytes(index_matrix),
+        temp=compute_size_in_bytes(index_matrix),
+    )
 
     # total cost
     total_mem_cost = MemoryCost(activation=fwd_mem_cost.activation + bwd_mem_cost.activation, temp=bwd_mem_cost.temp)
@@ -127,8 +128,8 @@ def maxpool_meta_info(*args, **kwargs) -> Tuple[TrainCycleItem, TrainCycleItem, 
     mem_cost = TrainCycleItem(fwd=fwd_mem_cost, bwd=bwd_mem_cost, total=total_mem_cost)
 
     # store fwd_in, fwd_buffer, fwd_out
-    fwd_in = [torch.zeros_like(input_tensor, device='meta')]
-    fwd_buffer = [torch.zeros_like(index_matrix, device='meta')]
-    fwd_out = [torch.zeros_like(output_tensor, device='meta')]
+    fwd_in = [torch.zeros_like(input_tensor, device="meta")]
+    fwd_buffer = [torch.zeros_like(index_matrix, device="meta")]
+    fwd_out = [torch.zeros_like(output_tensor, device="meta")]
 
     return compute_cost, mem_cost, fwd_in, fwd_buffer, fwd_out

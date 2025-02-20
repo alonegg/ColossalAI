@@ -1,5 +1,5 @@
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 import torch
 import torch.fx
@@ -22,7 +22,7 @@ def _benchmark_autochunk_gpt_gm(
     data: tuple,
     max_memory: int = None,
 ) -> None:
-    model = model.cuda().eval()
+    model = model.eval().cpu()
 
     # build model and input
     meta_args, concrete_args, sequence = data
@@ -37,7 +37,7 @@ def _benchmark_autochunk_gpt_gm(
     )
     interp = MetaInfoProp(meta_graph)
     meta_tensors = [meta_args[i] if i in meta_args else concrete_args[i] for i in sequence]
-    meta_tensors = [MetaTensor(i, fake_device="cuda:0") if isinstance(i, torch.Tensor) else i for i in meta_tensors]
+    meta_tensors = [MetaTensor(i, fake_device="cpu") if isinstance(i, torch.Tensor) else i for i in meta_tensors]
     interp.propagate(*meta_tensors)
     codegen = AutoChunkCodeGen(
         meta_graph,
@@ -58,14 +58,16 @@ def _benchmark_autochunk_gpt_gm(
     # init inputs
     inputs = [meta_args[i] if i in meta_args else concrete_args[i] for i in sequence]
     inputs = [i.cuda() if isinstance(i, torch.Tensor) else i for i in inputs]
-    model.cuda().eval()
+    model.cuda()
 
     # bench
     para_mem = float(parameter_size(model)) / 1024**2 * 6
     act_mem = _benchmark_memory(gm, inputs)
     speed = _benchmark_speed(gm, inputs)
-    print("gpt autochunk, time: %.4fs, act mem: %.2fMB, para mem: %.2fMB, all mem: %.2fMB" %
-          (speed, act_mem, para_mem, act_mem + para_mem))
+    print(
+        "gpt autochunk, time: %.4fs, act mem: %.2fMB, para mem: %.2fMB, all mem: %.2fMB"
+        % (speed, act_mem, para_mem, act_mem + para_mem)
+    )
 
 
 def _benchmark_autochunk_gpt_origin(
@@ -86,8 +88,10 @@ def _benchmark_autochunk_gpt_origin(
     para_mem = float(parameter_size(model)) / 1024**2 * 6
     act_mem = _benchmark_memory(model, inputs)
     speed = _benchmark_speed(model, inputs)
-    print("gpt origin, time: %.4fs, act mem: %.2fMB, para mem: %.2fMB, all mem: %.2fMB" %
-          (speed, act_mem, para_mem, act_mem + para_mem))
+    print(
+        "gpt origin, time: %.4fs, act mem: %.2fMB, para mem: %.2fMB, all mem: %.2fMB"
+        % (speed, act_mem, para_mem, act_mem + para_mem)
+    )
     return act_mem
 
 
@@ -95,7 +99,7 @@ def _benchmark_memory(model, inputs):
     with torch.no_grad():
         torch.cuda.reset_peak_memory_stats()
         now_mem = float(torch.cuda.memory_allocated()) / 1024**2
-        model(*[i.clone() if isinstance(i, torch.Tensor) else i for i in inputs])
+        model(*inputs)
         new_max_mem = float(torch.cuda.max_memory_allocated()) / 1024**2
     return new_max_mem - now_mem
 
@@ -115,9 +119,9 @@ def _benchmark_speed(model, inputs, loop=5):
 
 def benchmark_autochunk_gpt(batch=1, seq=512, n_embd=768, n_head=12):
     from test_autochunk_gpt import GPT2Config, GPT2Model, get_data
+
     model = GPT2Model
-    config = GPT2Config(n_embd=n_embd, n_position=seq, n_layer=2, n_head=n_head)
-    config.max_position_embeddings = seq
+    config = GPT2Config(n_embd=n_embd, n_positions=seq, n_layer=2, n_head=n_head)
     model = model(config=config)
     shape = [batch, seq]
     print("\nbatch: %d, seq: %d, n_embd: %d, n_head: %d" % (batch, seq, n_embd, n_head))
@@ -126,7 +130,7 @@ def benchmark_autochunk_gpt(batch=1, seq=512, n_embd=768, n_head=12):
         try:
             _benchmark_autochunk_gpt_gm(model, get_data(shape), max_mem * ratio)
         except RuntimeError as e:
-            if e.args[0] == 'Search failed. Try a larger memory threshold.':
+            if e.args[0] == "Search failed. Try a larger memory threshold.":
                 break
         except Exception as e:
             raise e

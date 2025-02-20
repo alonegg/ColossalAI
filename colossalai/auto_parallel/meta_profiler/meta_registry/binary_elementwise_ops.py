@@ -2,14 +2,14 @@ from typing import List, Tuple
 
 import torch
 
+from colossalai._analyzer._subclasses.flop_tensor import flop_mapping
+from colossalai._analyzer.fx.node_util import compute_size_in_bytes as activation_size
+from colossalai.auto_parallel.tensor_shard.constants import BCAST_FUNC_OP
 from colossalai.auto_parallel.tensor_shard.sharding_strategy import MemoryCost, OperationDataType, TrainCycleItem
-from colossalai.fx.profiler.memory_utils import activation_size
-from colossalai.fx.profiler.opcount import flop_mapping
 
-from ..constants import BCAST_FUNC_OP, NO_SAVE_ACTIVATION
 from ..registry import meta_register
 
-__all__ = ['binary_elementwise_meta_info']
+__all__ = ["binary_elementwise_meta_info"]
 
 
 @meta_register.register(BCAST_FUNC_OP)
@@ -17,7 +17,7 @@ def binary_elementwise_meta_info(*args, **kwargs) -> Tuple[TrainCycleItem, Train
     """Meta information generator for binary elementwise operations
     NOTE: Some of the binary elementwise operations will discard the input activation after computation, as they
     don't need those tensors for back propagation, for example, if there are two tensors being sent for `torch.add`,
-    they will be discarded right after add operation is done. We create a simple API in `MetaInfo` class to identify
+    they will be discarded right after add operation is done. We create a simple API in `ShardMetaInfo` class to identify
     this behavior, it is critical for better memory estimation.
 
     Returns:
@@ -61,6 +61,6 @@ def binary_elementwise_meta_info(*args, **kwargs) -> Tuple[TrainCycleItem, Train
     # store fwd_in, fwd_buffer, fwd_out
     fwd_in = []
     fwd_buffer = []
-    fwd_out = [torch.zeros_like(output_op_data.data, device='meta')]
+    fwd_out = [torch.zeros_like(output_op_data.data, device="meta")]
 
     return compute_cost, memory_cost, fwd_in, fwd_buffer, fwd_out

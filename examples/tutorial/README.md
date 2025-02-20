@@ -1,8 +1,11 @@
 # Colossal-AI Tutorial Hands-on
 
+> This path is an abbreviated tutorial prepared for specific activities and may not be maintained in real time. For use of Colossal-AI, please refer to other [examples](https://github.com/hpcaitech/ColossalAI/tree/main/examples) and [documents](https://www.colossalai.org/).
+
 ## Introduction
 
-Welcome to the [Colossal-AI](https://github.com/hpcaitech/ColossalAI) tutorial, which has been accepted as official tutorials by top conference [SC](https://sc22.supercomputing.org/), [AAAI](https://aaai.org/Conferences/AAAI-23/), [PPoPP](https://ppopp23.sigplan.org/), [CVPR](https://cvpr2023.thecvf.com/), etc.
+Welcome to the [Colossal-AI](https://github.com/hpcaitech/ColossalAI) tutorial, which has been accepted as official tutorials by top conference [NeurIPS](https://nips.cc/), [SC](https://sc22.supercomputing.org/), [AAAI](https://aaai.org/Conferences/AAAI-23/),
+[PPoPP](https://ppopp23.sigplan.org/), [CVPR](https://cvpr2023.thecvf.com/), [ISC](https://www.isc-hpc.com/), [NVIDIA GTC](https://www.nvidia.com/en-us/on-demand/session/gtcspring23-S51482/) ,etc.
 
 
 [Colossal-AI](https://github.com/hpcaitech/ColossalAI), a unified deep learning system for the big model era, integrates
@@ -27,7 +30,11 @@ quickly deploy large AI model training and inference, reducing large AI model tr
  - Fine-tuning and Inference for OPT [[code]](https://github.com/hpcaitech/ColossalAI/tree/main/examples/tutorial/opt) [[video]](https://www.youtube.com/watch?v=jbEFNVzl67Y)
  - Optimized AlphaFold [[code]](https://github.com/hpcaitech/ColossalAI/tree/main/examples/tutorial/fastfold) [[video]](https://www.youtube.com/watch?v=-zP13LfJP7w)
  - Optimized Stable Diffusion [[code]](https://github.com/hpcaitech/ColossalAI/tree/main/examples/images/diffusion) [[video]](https://www.youtube.com/watch?v=8KHeUjjc-XQ)
-
+ - ColossalChat: Cloning ChatGPT with a Complete RLHF Pipeline
+[[code]](https://github.com/hpcaitech/ColossalAI/tree/main/applications/Chat)
+[[blog]](https://medium.com/@yangyou_berkeley/colossalchat-an-open-source-solution-for-cloning-chatgpt-with-a-complete-rlhf-pipeline-5edf08fb538b)
+[[demo]](https://www.youtube.com/watch?v=HcTiHzApHm0)
+[[video]](https://www.youtube.com/watch?v=-qFBZFmOJfg)
 
 ## Discussion
 
@@ -38,16 +45,7 @@ If you encounter any problem while running these tutorials, you may want to rais
 
 ## 🛠️ Setup environment
 [[video]](https://www.youtube.com/watch?v=dpMYj974ZIc) You should use `conda` to create a virtual environment, we recommend **python 3.8**, e.g. `conda create -n colossal python=3.8`. This installation commands are for CUDA 11.3, if you have a different version of CUDA, please download PyTorch and Colossal-AI accordingly.
-
-```
-# install torch
-# visit https://pytorch.org/get-started/locally/ to download other versions
-pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
-
-# install latest ColossalAI
-# visit https://colossalai.org/download to download corresponding version of Colossal-AI
-pip install colossalai==0.1.11rc3+torch1.12cu11.3 -f https://release.colossalai.org
-```
+You can refer to the [Installation](https://github.com/hpcaitech/ColossalAI#installation) to set up your environment.
 
 You can run `colossalai check -i` to verify if you have correctly set up your environment 🕹️.
 ![](https://raw.githubusercontent.com/hpcaitech/public_assets/main/examples/tutorial/colossalai%20check%20-i.png)
